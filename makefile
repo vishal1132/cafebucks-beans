@@ -11,7 +11,7 @@ protogo:
 	@protoc -I protos/ protos/beans.proto --go_out=plugins=grpc:protos/beans
 
 dev:
-	@go build -o beans ./server && PORT=8080 ./beans
+	@go build -o beans ./server && PORT=8081 ./beans
 
 buildImage:
 	@docker build -t bean .

@@ -42,6 +42,17 @@ func (h *handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "healthy")
 }
 
+func validateBeans(coffee string) bool {
+	if val, ok := coffeebeans[coffee]; ok {
+		if val.Stock > val.UnitUse {
+			val.Stock = val.Stock - val.UnitUse
+			return true
+		}
+		return false
+	}
+	return false
+}
+
 func (h *handler) handleGetStock(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

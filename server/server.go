@@ -13,12 +13,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/vishal1132/cafebucks/config"
+	"github.com/vishal1132/cafebucks/eventbus"
 )
 
 // Server is the http server struct
 type server struct {
-	mux    *mux.Router
-	logger zerolog.Logger
+	mux      *mux.Router
+	logger   zerolog.Logger
+	EventBus *eventbus.EB
 }
 
 func runserver(cfg config.C, logger zerolog.Logger) error {
@@ -31,9 +33,35 @@ func runserver(cfg config.C, logger zerolog.Logger) error {
 		Str("env", string(cfg.Env)).
 		Str("log_level", cfg.LogLevel.String())
 
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	defer cancel()
+
+	// initialize eventbus
+	ebcfg := eventbus.Config{
+		Logger: &logger,
+		Topic:  "test",
+	}
+	eb, err := eventbus.New(ebcfg)
+	if err != nil {
+		logger.Error().Err(err).Msg("Could not create an instance of eventbus")
+		return err
+	}
+
+	s := server{
+		mux:      mux.NewRouter(),
+		logger:   logger,
+		EventBus: eb,
+	}
+
+	// Create an event reader in a concurrent go routine
+	go func() {
+		msg, err := eb.ReadEvents(ctx)
+		if err != nil {
+			logger.With().Str("event read", "error").Err(err)
+		}
+		s.eventHandler(msg)
+	}()
 
 	go func() {
 		sig := <-signalCh
@@ -44,11 +72,6 @@ func runserver(cfg config.C, logger zerolog.Logger) error {
 			Str("signal", sig.String()).
 			Msg("shutting down http server gracefully")
 	}()
-
-	s := server{
-		mux:    mux.NewRouter(),
-		logger: logger,
-	}
 
 	s.registerHandlers()
 
