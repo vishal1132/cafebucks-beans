@@ -9,7 +9,7 @@ import (
 )
 
 // eventHandler is the handler for events
-func (s *server) eventHandler(msg kafka.Message) {
+func (s *server) eventHandler(msg kafka.Message, publish bool) {
 	switch string(msg.Key) {
 	case string(eventbus.OrderReceived):
 		var event eventbus.EventC
@@ -27,7 +27,9 @@ func (s *server) eventHandler(msg kafka.Message) {
 			s.logger.Error().Err(err).Msg("error marshaling event to be pushed into kafka again")
 		}
 		if validateBeans(event.Order.Cof.Name) {
-			err = s.EventBus.Publish(context.Background(), eventbus.OrderAccept, b)
+			if publish {
+				err = s.EventBus.Publish(context.Background(), eventbus.OrderAccept, b)
+			}
 			if err != nil {
 				s.logger.Error().Err(err).Msg("error pushing event to kafka")
 			}

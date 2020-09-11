@@ -23,8 +23,54 @@ type server struct {
 	EventBus *eventbus.EB
 }
 
+/*
+func (s *server) waitForServiceToBeUp(ctx context.Context, eb *eventbus.EB, l zerolog.Logger, topic string) {
+	offset := eb.GetOffset()
+	l.Info().Str("offset", strconv.Itoa(int(eb.GetOffset()))).Msg("waiting for beans service to be up")
+	err := eb.SetOffset(0)
+	if err != nil {
+		l.Error().Err(err).Msg("Error setting offset for reader")
+	}
+	if offset < 0 {
+		offset = -offset
+	}
+	for i := 0; i <= int(offset); i++ {
+		msg, err := eb.ReadEvents(context.Background())
+		if err != nil {
+			l.With().Str("context", "getting service up").Str("event read", "error").Err(err)
+		}
+		s.eventHandler(msg, false)
+	}
+	err = eb.SetOffset(offset + 1)
+	if err != nil {
+		l.Error().Err(err).Msg("Error setting offset for reader")
+	}
+	l.Info().Msg("beans service is up now")
+}
+*/
+
+func (s *server) waitForServiceToBeUp(ctx context.Context, eb *eventbus.EB, l zerolog.Logger, topic, groupID string) {
+	l.Info().Msg("Getting order service up")
+	offset, err := eb.GetOffset(ctx, topic, groupID)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to get offset")
+		return
+	}
+	if offset < 0 {
+		return
+	}
+	ebb := eb.NewReader([]string{"localhost:9092"}, topic)
+	for i := 0; i < int(offset); i++ {
+		msg, err := ebb.ReadEvents(context.Background())
+		if err != nil {
+			l.With().Str("context", "getting service up").Str("event read", "error").Err(err)
+		}
+		s.eventHandler(msg, false)
+	}
+}
+
 func runserver(cfg config.C, logger zerolog.Logger) error {
-	logger = logger.With().Str("context", "order service").Logger()
+	logger = logger.With().Str("context", "beans service").Logger()
 	// set up signal caching
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGTERM, syscall.SIGINT)
@@ -39,9 +85,12 @@ func runserver(cfg config.C, logger zerolog.Logger) error {
 
 	// initialize eventbus
 	ebcfg := eventbus.Config{
-		Logger: &logger,
-		Topic:  "test",
+		Logger:  &logger,
+		Topic:   "test",
+		GroupID: "newbeantest",
+		Brokers: []string{"localhost:9092"},
 	}
+
 	eb, err := eventbus.New(ebcfg)
 	if err != nil {
 		logger.Error().Err(err).Msg("Could not create an instance of eventbus")
@@ -53,14 +102,17 @@ func runserver(cfg config.C, logger zerolog.Logger) error {
 		logger:   logger,
 		EventBus: eb,
 	}
-
+	s.waitForServiceToBeUp(ctx, eb, logger, "test", "newbeantest")
+	logger.Info().Msg("service is up now")
 	// Create an event reader in a concurrent go routine
 	go func() {
-		msg, err := eb.ReadEvents(ctx)
-		if err != nil {
-			logger.With().Str("event read", "error").Err(err)
+		for {
+			msg, err := eb.ReadEvents(ctx)
+			if err != nil {
+				logger.With().Str("event read", "error").Err(err)
+			}
+			s.eventHandler(msg, true)
 		}
-		s.eventHandler(msg)
 	}()
 
 	go func() {

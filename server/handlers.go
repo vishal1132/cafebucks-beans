@@ -168,7 +168,7 @@ func (h *handler) handleAddBeans(w http.ResponseWriter, r *http.Request) {
 	}
 	var beanVar = beans{Beans: beanReq, Stock: quantity, UnitUse: unitQty}
 
-	beanSlice = append(beanSlice, beanVar)
+	beanSlice = append(beanSlice, &beanVar)
 	lg.Info().
 		Str("beans", beanReq).
 		Str("stock", strconv.Itoa(beanVar.Stock)).

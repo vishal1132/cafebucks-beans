@@ -6,12 +6,19 @@ import (
 	"github.com/vishal1132/cafebucks/config"
 )
 
-var beanSlice []beans
+var beanSlice []*beans
 
-var coffeebeans map[string]beans
+var coffeebeans map[string]*beans
+
+var (
+	cappu  beans
+	frappu beans
+	ameri  beans
+)
 
 func main() {
 	seedBeans()
+	seedBeansSlice()
 	seedCoffeBeans()
 	cfg, err := config.LoadEnv()
 	if err != nil {
@@ -24,19 +31,21 @@ func main() {
 }
 
 func seedCoffeBeans() {
-	coffeebeans = make(map[string]beans)
-	coffeebeans["cappuccino"] = beans{"cappu", 300, 30}
-	coffeebeans["frappuccino"] = beans{"frappu", 200, 25}
-	coffeebeans["americano"] = beans{"ameri", 150, 20}
-	coffeebeans["indiano"] = beans{"ameri", 150, 20}
-	coffeebeans["espresso"] = beans{"frappu", 200, 25}
+	coffeebeans = make(map[string]*beans)
+	coffeebeans["cappuccino"] = &cappu
+	coffeebeans["frappuccino"] = &frappu
+	coffeebeans["americano"] = &ameri
+	coffeebeans["indiano"] = &cappu
+	coffeebeans["espresso"] = &frappu
+}
+
+func seedBeansSlice() {
+	beanSlice = make([]*beans, 0, 10)
+	beanSlice = []*beans{&cappu, &frappu, &ameri}
 }
 
 func seedBeans() {
-	beanSlice = make([]beans, 0, 10)
-	beanSlice = []beans{
-		{"cappu", 300, 30},
-		{"frappu", 200, 25},
-		{"ameri", 150, 20},
-	}
+	cappu = beans{"cappu", 300, 30}
+	frappu = beans{"frappu", 200, 25}
+	ameri = beans{"ameri", 150, 20}
 }

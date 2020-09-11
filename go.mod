@@ -2,6 +2,7 @@ module github.com/vishal1132/cafebucks-beans
 
 go 1.14
 
+replace github.com/segmentio/kafka-go => /Users/vishal/Desktop/kafka-go
 replace github.com/vishal1132/cafebucks => /Users/vishal/work/src/github.com/vishal1132/cafebucks
 
 require (
